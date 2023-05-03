@@ -137,7 +137,7 @@ def login():
     session.clear()
 
     # User reached route via POST (as by submitting a form via POST)
-    if request.method == "POST": #request.method is a built-in variable in flask that represents the http method used by the client when making a request to the server
+    if request.method == "POST":
 
         # Ensure username was submitted
         if not request.form.get("username"):
@@ -148,11 +148,12 @@ def login():
             return apology("must provide password", 403)
 
         # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = ?", request.form.get("username"))
+        rows = db.execute("SELECT * FROM users WHERE username = :username",
+                          username=request.form.get("username"))
 
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
-            return apology("invalid username and/or password", 403)
+            return render_template("login.html", error="Invalid username and/or password")
 
         # Remember which user has logged in
         session["user_id"] = rows[0]["id"]
@@ -163,6 +164,7 @@ def login():
     # User reached route via GET (as by clicking a link or via redirect)
     else:
         return render_template("login.html")
+
 
 
 @app.route("/logout")
@@ -199,39 +201,34 @@ def quote():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-    # Complete the implementation of register in such a way that it allows a user to register for an account via a form.
-
-#Require that a user input a username,
-# implemented as a text field whose name is username.
-# Render an apology if the user’s input is blank or the username already exists.
-#Require that a user input a password,
-# implemented as a text field whose name is password, and then that same password again,
-# implemented as a text field whose name is confirmation. Render an apology if either input is blank or the passwords do not match.
-#Submit the user’s input via POST to /register.
-#INSERT the new user into users, storing a hash of the user’s password, not the password itself. Hash the user’s password with generate_password_hash Odds are you’ll want to create a new template (e.g., register.html) that’s quite similar to login.html.
-#Once you’ve implemented register correctly, you should be able to register for an account and log in (since login and logout already work)! And you should be able to see your rows via phpLiteAdmin or sqlite3.
-    username = request.form.get("username")
-    if not username:
-        return apology("please input a username", 400)
-    #we are just comparing the inputted username from the user's form to the username in the database
-    rows = db.execute("SELECT * FROM USERS WHERE username = :username", username=username) #This line is necessary to check if the username entered by the user during registration already exists in the database or not.
-    #ensure a username dosen't already exist
-    if len(rows) != 0:
-        return apology("username already exists", 400)
-    #ensure a password was submitted and confirmed
-    password = request.get.form("password")
-    confirmation = request.get.confirmation("confirmation")
-    if not password or not confirmation:
-        return apology("must provide password and confirmation", 400)
-    elif password != confirmation:
-        return apology("password's don't match", 400)
-    #hash the password
-    hashed_password = generate_password_hash(password)
-    #insert the new user into the users database
-    db.execute("INSERT INTO users (username, hash) VALUES (:username, :hash)", username=username, hash=hashed_password)
-    #redirect the user to the homepage
-    return redirect("/")
-#User reached route via GET (as by clicking a link or via redirect)
+    if request.method == "POST":
+        # Ensure username was submitted
+        if not request.form.get("username"):
+            return apology("must provide username", 400)
+        # Ensure password was submitted
+        elif not request.form.get("password"):
+            return apology("must provide password", 400)
+        # Ensure password confirmation was submitted
+        elif not request.form.get("confirmation"):
+            return apology("must provide password confirmation", 400)
+        # Ensure password and confirmation match
+        elif request.form.get("password") != request.form.get("confirmation"):
+            return apology("passwords do not match", 400)
+        # Check if username already exists
+        existing_user = db.execute("SELECT * FROM users WHERE username = :username",
+                                   username=request.form.get("username"))
+        if len(existing_user) > 0:
+            return apology("username already exists", 400)
+        # Insert new user into database
+        db.execute("INSERT INTO users (username, hash) VALUES (:username, :hash)",
+                   username=request.form.get("username"),
+                   hash=generate_password_hash(request.form.get("password")))
+        # Commit changes to the database
+        db.commit()
+        # Redirect user to login page
+        return redirect("/login")
+    else:
+        return render_template("register.html")
 
 @app.route("/sell", methods=["GET", "POST"])
 @login_required
