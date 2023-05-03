@@ -1,0 +1,26 @@
+<html>
+  <head>
+    <title>My Portfolio</title>
+  </head>
+  <body>
+    <h1>My Portfolio</h1>
+    <p>Cash Balance: ${{ cash }}</p>
+    <p>Total Portfolio Value: ${{ total_value }}</p>
+    <table>
+      <tr>
+        <th>Symbol</th>
+        <th>Shares</th>
+        <th>Current Price</th>
+        <th>Total Value</th>
+      </tr>
+      {% for symbol, shares, current_price, total_value in rows %}
+      <tr>
+        <td>{{ symbol }}</td>
+        <td>{{ shares }}</td>
+        <td>{{ current_price }}</td>
+        <td>{{ total_value }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </body>
+</html>
