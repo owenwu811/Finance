@@ -26,8 +26,6 @@ db = SQL("sqlite:///finance.db")
 # Make sure API key is set
 if not os.environ.get("API_KEY"):
     raise RuntimeError("API_KEY not set")
-
-
 @app.after_request
 def after_request(response):
     """Ensure responses aren't cached"""
@@ -36,19 +34,18 @@ def after_request(response):
     response.headers["Expires"] = 0
     response.headers["Pragma"] = "no-cache"
     return response
-
-
 @app.route("/")
 @login_required
 def index():
     """Show user's portfolio of stocks"""
     #get the user's id - for the user currently logged in
-    user_id = session["user_id"]
+    user_id = session["user_id"] #session stores the id of the currently logged in user
     #Retrieve user's stocks from the database - which stocks the user owns
-    stocks = db.execute("SELECT symbol SUM(shares), AS total_shares FROM transactions WHERE user_id = :user_id GROUP BY symbol HAVING total_shares > 0",
+    stocks = db.execute("SELECT symbol SUM(shares) AS total_shares FROM transactions WHERE user_id = :user_id GROUP BY symbol HAVING total_shares > 0",
                   user_id=user_id)
-    #retrieve user's cash balance from database
-    user = db.execute("SELECT cash FROM users WHERE id = :user_id", user_id=user_id)[0]
+    #retrieve user's cash balance from database using the values for a particular row
+    #let's us access the cash value from the resulting dictionary by retrieving the first row from list of rows
+    user = db.execute("SELECT cash FROM users WHERE id = :user_id", user_id=user_id)[0] #retrieves first row from list of rows and returns as dictionary. keys correspond to column names while values corresponding to the database values
     cash = user["cash"]
     #initialize variables for the table
     rows = []
@@ -63,9 +60,6 @@ def index():
         rows.append((symbol, shares, current_price, total_stock_value))
     #return the template with the table and variables
     return render_template("index.html", rows=rows, cash=cash, total_value=total_value)
-
-
-
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
 def buy():
@@ -87,16 +81,17 @@ def buy():
     if shares < 1:
         return apology("Shares must be a positive integer")
     #Get stock info
-    stock = lookup(Symbol) #calling lookup to lookup current stock's price
+    #lookup import comes from line 10
+    stock = lookup(symbol) #calling lookup to lookup current stock's price
     price = stock["price"]
     total_cost = price * shares
     #check if user can afford the purchase by SELECTING how much cash the user has in users table
-    user = db.execute("SELECT * FROM users WHERE id = :user_id", user_id=session["user_id]).fetchone()
+    user = db.execute("SELECT * FROM users WHERE id = :user_id", user_id=session["user_id"]).fetchone()
     if user["cash"] < total_cost:
         return apology ("Not enough cash to complete the purchase")
     #update the user's cash balance
     db.execute("UPDATE users SET cash = cash  - :total_cost WHERE id = :user_id",
-               total_cost=total_cost, user_id=session["user_id])
+               total_cost=total_cost, user_id=session["user_id"])
     #insert purchase into purchases table
     db.execute("INSERT INTO purchases (user_id, symbol, shares, price, timestamp) VALUES (:user_id, :symbol, :shares, :price, DATETIME('now;'))",
                user_id=session["user_id"], symbol=symbol, shares=shares, price=price)
@@ -105,14 +100,34 @@ def buy():
     return redirect("/")
 
 
-
-
 @app.route("/history")
 @login_required
 def history():
     """Show user's history of transactions"""
-    return apology("TODO")
+    #Query database for all transactions for current user
+    transactions = db.execute("SELECT * FROM transactions WHERE user_id = :user_id ORDER BY timestamp DESC", user_id=session["user_id"])
+    #Create HTML table header
+    table = "<table><tr><th>Symbol</th><th>Type</th><th>Price</th><th>Shares</th><th>Timestamp</th></tr>"
+    #loop over transactions and generate table rows
+    for transaction in transactions:
+        if transaction["shares"] > 0:
+            #This is a buy transaction
+            type = "Buy"
+        else:
+            #This is a sell transaction
+            type = "Sell"
+        #Generate table row for transactions
+        row = f"<tr><td>{transaction['symbol']}</td><td>{type}</td><td>${transaction['price']:,.2f}</td><td>{abs(transaction['shares'])}</td><td>{transaction['timestamp']}</td></tr>"
+        #row = f"<tr><td>{transaction['symbol']}</td><td>{type?</td><td>${transaction['price']:,.2f}</td><td>{abs(transaction['shares']}</td><td>{transaction['timestamp']}</td></tr>"}}
+        #add row to table
+        table += row
+    #close the HTML table
+    #table variable is used to build a string that represents an HTML table so that we can concatenate strings with += operator
+    #we are adding the closing "</table>" tag to the end of the table string, effectively closing the HTML table
+    table += "</table>" #enclosed in quotation marks because it the "</table> text is a string that represents an HTML tag that closes the table.
 
+    #Return HTML table with table
+    return render_template("history.html", table=table)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -217,8 +232,7 @@ def register():
     #redirect the user to the homepage
     return redirect("/")
 #User reached route via GET (as by clicking a link or via redirect)
-else:
-    return
+
 @app.route("/sell", methods=["GET", "POST"])
 @login_required
 def sell():
@@ -226,7 +240,7 @@ def sell():
     if request.method == "GET":
         #GET THE USER'S STOCKS FROM THE DATABASE
         stocks = db.execute("SELECT symbol FROM transactions WHERE user_id = :user_id GROUP BY symbol HAVING SUM(shares) > 0",
-                            user_id=session["user_id"]
+                            user_id=session["user_id"] #session is imported in line 2
         )
         #Render the form to sell stocks
         return render_template("sell.html", stocks=stocks)
@@ -248,7 +262,7 @@ def sell():
             return apology("Not enough shares")
         #Get the current price of the stock
         stock = lookup(symbol)
-        price = stock['price"]
+        price = stock["price"]
         #Calculate the total sale price
         total_sale = price * shares
         #Update the user's cash balance
@@ -257,12 +271,12 @@ def sell():
                    user_id=session["user_id"]
         )
         #Insert a new transaction into the database
-        db.execute("INSERT INTO transactions(user_id, symbol, shares, price) VALUES (:user_id, :symbol, :shares, :price),
-                   user_id=session["user_id"])
-                   symbol=symbol,
-                   shares=shares,
-                   price=price
-        )
+        db.execute("INSERT INTO transactions(user_id, symbol, shares, price) VALUES (:user_id, :symbol, :shares, :price)",
+        user_id=session["user_id"])
+        symbol=symbol,
+        shares=shares,
+        price=price
+
     #Flash a success message, and redirect to main page
         flash("Sold")
         return redirect("/")
