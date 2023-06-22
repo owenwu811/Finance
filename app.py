@@ -6,7 +6,6 @@ from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from helpers import apology, login_required, lookup, usd
 
 # Configure application
@@ -50,7 +49,7 @@ def index():
     #initialize variables for the table
     rows = []
     total_value = cash
-    #Loop through user's stocks and retrieve CURRENT PRICES OF EACH STOCK using lookup
+    #Loop through user's stocks from database and retrieve CURRENT PRICES OF EACH STOCK using lookup
     for stock in stocks:
         symbol = stock['symbol']
         shares = stock['total_shares']
@@ -66,7 +65,7 @@ def buy():
     """allows user to Buy shares of stock"""
     if request.method == "GET":
         return render_template("buy.html")
-    else:
+    else: #post
         symbol = request.form.get("symbol") #Require that a user input a stock’s symbol, implemented as a text field whose name is symbol.
         #Require that a user input a number of shares, implemented as a text field whose name is shares.
         shares = request.form.get("shares")
@@ -85,11 +84,11 @@ def buy():
     stock = lookup(symbol) #calling lookup to lookup current stock's price
     price = stock["price"]
     total_cost = price * shares
-    #check if user can afford the purchase by SELECTING how much cash the user has in users table
+    #check if user can afford the purchase by SELECTING how much cash the user has in users table using the id of that user
     user = db.execute("SELECT * FROM users WHERE id = :user_id", user_id=session["user_id"]).fetchone()
     if user["cash"] < total_cost:
         return apology ("Not enough cash to complete the purchase")
-    #update the user's cash balance
+    #update the user's cash balance if the transaction does go through successfully
     db.execute("UPDATE users SET cash = cash  - :total_cost WHERE id = :user_id",
                total_cost=total_cost, user_id=session["user_id"])
     #insert purchase into purchases table
@@ -166,7 +165,6 @@ def login():
         return render_template("login.html")
 
 
-
 @app.route("/logout")
 def logout():
     """Log user out"""
@@ -241,8 +239,8 @@ def sell():
         )
         #Render the form to sell stocks
         return render_template("sell.html", stocks=stocks)
-    else:
-        #Get the stock symbol and number of shares from the form
+    else: #post method condition
+        #retrieve the stock symbol and number of shares from the form
         symbol = request.form.get("symbol")
         shares = int(request.form.get("shares"))
         #Check that the symbol and number of shares are valid
