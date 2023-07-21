@@ -1,6 +1,5 @@
 
 import os
-
 from cs50 import SQL
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
@@ -37,7 +36,7 @@ def after_request(response):
 @login_required
 def index():
     """Show user's portfolio of stocks"""
-    #get the user's id - for the user currently logged in
+    #get the user's id for the user that is currently logged in
     user_id = session["user_id"] #session stores the id of the currently logged in user
     #Retrieve user's stocks from the database - which stocks the user owns
     stocks = db.execute("SELECT symbol SUM(shares) AS total_shares FROM transactions WHERE user_id = :user_id GROUP BY symbol HAVING total_shares > 0",
