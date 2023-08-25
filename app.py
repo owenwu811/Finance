@@ -7,19 +7,9 @@ from tempfile import mkdtemp
 from werkzeug.security import check_password_hash, generate_password_hash
 from helpers import apology, login_required, lookup, usd
 
-# Configure application
-app = Flask(__name__)
-
-# Custom filter
-app.jinja_env.filters["usd"] = usd
-
 # Configure session to use filesystem (instead of signed cookies)
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
+app, app.jinja_env.filters["usd"], app.config["SESSION_PERMANENT"], app.config["SESSION_TYPE"], db = Flask(__name__), usd, False, "filesystem", SQL("sqlite:///finance.db")
 Session(app)
-
-# Configure CS50 Library to use SQLite database
-db = SQL("sqlite:///finance.db")
 
 # Make sure API key is set
 if not os.environ.get("API_KEY"):
@@ -28,9 +18,7 @@ if not os.environ.get("API_KEY"):
 def after_request(response):
     """Ensure responses aren't cached"""
     """The reason we do not want to cache responses is to ensure that the user is always presented with the most up-to-date information. If we were to cache responses, the user may see outdated information if the page has not been refreshed since the last time the information was updated. This can be particularly problematic in the context of a financial application like this, where accurate and current data is critical. By setting these headers, we ensure that the browser does not cache any content, forcing it to request fresh data from the server each time the user visits the page."""
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Expires"] = 0
-    response.headers["Pragma"] = "no-cache"
+    response.headers["Cache-Control"], response.headers["Expires"], response.headers["Pragma"] = "no-cache, no-store, must-revalidate", 0, "no-cache"
     return response
 @app.route("/")
 @login_required
@@ -44,16 +32,9 @@ def index():
     #retrieve user's cash balance from database using the values for a particular row
     #let's us access the cash value from the resulting dictionary by retrieving the first row from list of rows
     user = db.execute("SELECT cash FROM users WHERE id = :user_id", user_id=user_id)[0] #retrieves first row from list of rows and returns as dictionary. keys correspond to column names while values corresponding to the database values
-    cash = user["cash"]
-    #initialize variables for the table
-    rows = []
-    total_value = cash
-    #Loop through user's stocks from database and retrieve CURRENT PRICES OF EACH STOCK using lookup
+    cash, rows, total_value = user["cash"], [], cash
     for stock in stocks:
-        symbol = stock['symbol']
-        shares = stock['total_shares']
-        current_price = lookup(symbol)['price'] #the current price of each stock
-        total_stock_value = current_price * shares #total value of each holding (share * price)
+        symbol, shares, current_price, total_stock_value = stock['symbol'], stock['total_shares'], lookup(symbol)['price'], current_price * shares #total value of each holding (share * price)
         total_value += total_stock_value
         rows.append((symbol, shares, current_price, total_stock_value))
     #return the template with the table and variables
@@ -65,9 +46,8 @@ def buy():
     if request.method == "GET":
         return render_template("buy.html")
     else: #post
-        symbol = request.form.get("symbol") #Require that a user input a stock’s symbol, implemented as a text field whose name is symbol.
+        symbol, shares = request.form.get("symbol"), request.form.get("shares") #Require that a user input a stock’s symbol, implemented as a text field whose name is symbol.
         #Require that a user input a number of shares, implemented as a text field whose name is shares.
-        shares = request.form.get("shares")
     #valid symbol
     if not symbol or lookup(symbol) is None: # #Render an apology if the input is blank or the symbol does not exist (as per the return value of lookup).
         return apology("Invalid Symbol")
@@ -80,9 +60,7 @@ def buy():
         return apology("Shares must be a positive integer")
     #Get stock info
     #lookup import comes from line 10
-    stock = lookup(symbol) #calling lookup to lookup current stock's price
-    price = stock["price"]
-    total_cost = price * shares
+    stock, price, total_cost = lookup(symbol), stock["price"], price * shares  #calling lookup to lookup current stock's price
     #check if user can afford the purchase by SELECTING how much cash the user has in users table using the id of that user
     user = db.execute("SELECT * FROM users WHERE id = :user_id", user_id=session["user_id"]).fetchone()
     if user["cash"] < total_cost:
@@ -240,8 +218,7 @@ def sell():
         return render_template("sell.html", stocks=stocks)
     else: #post method condition
         #retrieve the stock symbol and number of shares from the form
-        symbol = request.form.get("symbol")
-        shares = int(request.form.get("shares"))
+        symbol, shares = request.form.get("symbol"), int(request.form.get("shares"))
         #Check that the symbol and number of shares are valid
         if not symbol or not lookup(symbol):
             return apology("Invalid Symbol")
@@ -255,10 +232,8 @@ def sell():
         if len(rows) != 1 or rows[0]["total_shares"] < shares:
             return apology("Not enough shares")
         #Get the current price of the stock
-        stock = lookup(symbol)
-        price = stock["price"]
+        stock, price, total_sale = lookup(symbol), stock["price"], price * shares
         #Calculate the total sale price
-        total_sale = price * shares
         #Update the user's cash balance
         db.execute("UPDATE users SET cash = cash + :total_sale WHERE id = :user_id",
                    total_sale=total_sale,
