@@ -81,9 +81,8 @@ def buy():
 def history():
     """Show user's history of transactions"""
     #Query database for all transactions for current user
-    transactions = db.execute("SELECT * FROM transactions WHERE user_id = :user_id ORDER BY timestamp DESC", user_id=session["user_id"])
+    transactions, table = db.execute("SELECT * FROM transactions WHERE user_id = :user_id ORDER BY timestamp DESC", user_id=session["user_id"]), "<table><tr><th>Symbol</th><th>Type</th><th>Price</th><th>Shares</th><th>Timestamp</th></tr>"
     #Create HTML table header
-    table = "<table><tr><th>Symbol</th><th>Type</th><th>Price</th><th>Shares</th><th>Timestamp</th></tr>"
     #loop over transactions and generate table rows
     for transaction in transactions:
         if transaction["shares"] > 0:
