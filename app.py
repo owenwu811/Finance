@@ -45,11 +45,11 @@ def buy():
     """allows user to Buy shares of stock"""
     if request.method == "GET":
         return render_template("buy.html")
-    else: #post
+    else: 
         symbol, shares = request.form.get("symbol"), request.form.get("shares") #Require that a user input a stock’s symbol, implemented as a text field whose name is symbol.
         #Require that a user input a number of shares, implemented as a text field whose name is shares.
     #valid symbol
-    if not symbol or lookup(symbol) is None: # #Render an apology if the input is blank or the symbol does not exist (as per the return value of lookup).
+    if not symbol or not lookup(symbol): # #Render an apology if the input is blank or the symbol does not exist (as per the return value of lookup).
         return apology("Invalid Symbol")
     #validate shares
     try:
