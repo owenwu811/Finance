@@ -104,7 +104,7 @@ def history():
     #Return HTML table with table
     return render_template("history.html", table=table)
 
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/login", methods=["GET", "POST"]) #we need to specify the method if it's not GET
 def login():
     """Log user in"""
 
